@@ -26,7 +26,7 @@ mod test {
       ..Default::default()
     };
 
-    assert_eq!(generate(&fragment, 1, 100), " -item 1\n -item 2\n");
+    assert_eq!(generate(&fragment, 1, 100), "   -item 1\n   -item 2\n");
   }
 
   /* #[test] */
