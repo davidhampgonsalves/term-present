@@ -3,7 +3,5 @@ dependencies:
     - curl -sf -L https://static.rust-lang.org/rustup.sh | sh /dev/stdin --channel=stable --yes
 
 test:
-  pre:
-    - cargo build
   override:
-    - cargo test
+    - eval `ssh-agent` && ssh-add /home/ubuntu/.ssh/id_circleci_github && cargo test
