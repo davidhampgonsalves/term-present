@@ -64,38 +64,6 @@ pub fn parse_slide(markdown: &str, index: i16) -> Option<fragments::Fragment> {
   parse(fragments::ElementType::Slide, &mut parser)
 }
 
-/* pub fn parse(markdown: &str) -> Vec<fragments::Fragment> { */
-/*   let mut parser = Parser::new(markdown); */
-/*   let mut fragmentQueue: Vec<&fragments::Fragment> = vec![]; */
-/*   let mut slides: Vec<fragments::Fragment> = vec![]; */
-
-/*   while let Some(event) = parser.next() { */
-/*     println!("{:?}", event); */
-/*     if fragmentQueue.is_empty() { */
-/*       fragmentQueue.push(&fragments::Fragment { element_type: fragments::ElementType::Slide, ..Default::default() }); */
-/*     } */
-
-/*     match event { */
-/*       Start(tag) => { */
-/*         let mut fragment = start_tag(tag, &fragmentQueue.last().unwrap()); */
-/*         fragmentQueue.push(&fragment); */
-/*       }, */
-/*       End(tag) => { fragmentQueue.pop(); }, */
-/*       Text(text) => { */
-/*         fragmentQueue.last().unwrap().children.unwrap().push(Box::new(fragments::Fragment { */
-/*           element_type: fragments::ElementType::Text, */
-/*           content: text.to_string(), */
-/*           ..Default::default() */
-/*         })); */
-/*       }, */
-/*       _ => { */
-/*         panic!("here") */
-/*       } */
-/*     } */
-/*   } */
-/*   vec![] */
-/* } */
-
 fn to_presentation_tag(tag: Tag) -> fragments::ElementType {
   match tag {
     Tag::Paragraph =>  { fragments::ElementType::Paragraph }
@@ -115,12 +83,12 @@ mod test {
 
   #[test]
   fn parses_list() {
-    println!("starting test");
     let slide = parse_slide(&"* item 1\n* item 2\n".to_string(), 0).unwrap();
 
-    println!("parsed slide: {:?}", slide);
-    let list = slide.children.unwrap().get(0);
-    assert_eq!(list.unwrap().children.unwrap().len(), 2);
-    /* assert_eq!(list[0].children.unwrap().len(), 2); */
+    let listItems = slide.children.unwrap()[0].clone().children.unwrap();
+
+    assert_eq!(listItems.len(), 2);
+    assert_eq!(listItems[0].content, "item 1");
+    assert_eq!(listItems[1].content, "item 2");
   }
 }

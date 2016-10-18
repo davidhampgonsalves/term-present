@@ -9,16 +9,14 @@ pub mod slide;
 pub mod paragraph;
 pub mod code_block;
 
-#[derive(PartialEq)]
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ElementType { Text, List, Bold, Slide, Paragraph, CodeBlock, InlineCode }
 
+#[derive(Clone, PartialEq)]
 pub struct Fragment {
   pub element_type: ElementType,
-  pub content: String, //TODO: change to &str
-  // TODO: change to slices: https://doc.rust-lang.org/std/vec/struct.Vec.html#slicingc
-  pub children: Option<Vec<Box<Fragment>>>, // TODO: remove optional, vec is simplier
-  // TODO: if I use slice do I need box?
+  pub content: String,
+  pub children: Option<Vec<Box<Fragment>>>,
 }
 
 impl Default for Fragment {
