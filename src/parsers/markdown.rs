@@ -4,6 +4,44 @@ pub use pulldown_cmark::Parser;
 use pulldown_cmark::parse::{Event, Tag};
 use pulldown_cmark::parse::Event::{Start, End, Text, Html, InlineHtml, SoftBreak, HardBreak, FootnoteReference};
 
+
+pub fn parse_slide(markdown: &str, index: i16) -> Option<fragments::Fragment> {
+  let mut parser = Parser::new(markdown);
+  let i = skip_to_slide(&mut parser, index);
+
+  if i != index {
+    parser = Parser::new(markdown);
+    skip_to_slide(&mut parser, i);
+  }
+
+  // TODO: also return total number of slides (maybe reusing skip_to_slide
+  parse(fragments::ElementType::Slide, &mut parser)
+}
+
+fn skip_to_slide(parser: &mut Parser, index: i16) -> i16 {
+  if index == 0 { return 0 }
+  let mut position: i16 = 0;
+
+  loop {
+    let event = match parser.next() {
+      Some(event) => {
+        match event {
+          End(tag) => {
+            if slide_end(&tag) {
+              position += 1;
+              if position == index {
+                return position
+              }
+            }
+          },
+          _ => {}
+        };
+      },
+      None => { return position }
+    };
+  }
+}
+
 fn parse(element_type: fragments::ElementType, parser: &mut Parser) -> Option<fragments::Fragment> {
   let mut content:String = "".to_string();
   let mut children: Vec<Box<fragments::Fragment>> = vec![];
@@ -12,10 +50,11 @@ fn parse(element_type: fragments::ElementType, parser: &mut Parser) -> Option<fr
     let event = match parser.next() {
       Some(event) => { event },
       None => {
-        if element_type == fragments::ElementType::Slide && !children.is_empty()  {
-          return Some(fragments::Fragment { content: content, element_type: element_type, children: Some(children) });
+        if element_type != fragments::ElementType::Slide {
+          panic!("Markdown data error, expected slide, got {:?}", element_type);
         }
-        return None
+
+        return Some(fragments::Fragment { content: content, element_type: fragments::ElementType::Slide, children: Some(children) });
       }
     };
 
@@ -23,10 +62,6 @@ fn parse(element_type: fragments::ElementType, parser: &mut Parser) -> Option<fr
 
     match event {
       Start(tag) => {
-        if slide_end(&tag) {
-          return Some(fragments::Fragment { content: content, element_type: element_type, children: Some(children) });
-        }
-
         let child_element_type = to_presentation_tag(tag);
         let child_fragment = parse(child_element_type, parser);
         match child_fragment {
@@ -35,33 +70,24 @@ fn parse(element_type: fragments::ElementType, parser: &mut Parser) -> Option<fr
         };
       },
       End(tag) => {
+        /* if slide_end(&tag) { */
+        /*   return Some(fragments::Fragment { content: content, element_type: element_type, children: Some(children) }); */
+        /* } */
+
         return Some(fragments::Fragment { content: content, element_type: element_type, children: Some(children) })
       },
       Text(text) => {
-        content = text.into_owned();
+        // if we aren't in a context type then create a text node otherwise set current node content
+        if fragments::is_block_element(&element_type) {
+          println!("adding content {}", text);
+          children.push(Box::new(fragments::Fragment { content: text.into_owned(), ..Default::default()}));
+        } else {
+          content = text.into_owned();
+        }
       },
       _ => panic!("here")
     }
   }
-
-  panic!("end")
-  /* None */
-}
-
-fn slide_end(tag: &Tag) -> bool {
-  match *tag {
-    Tag::Rule => { true },
-    _ => { false }
-  }
-}
-
-pub fn parse_slide(markdown: &str, index: i16) -> Option<fragments::Fragment> {
-  let mut parser = Parser::new(markdown);
-  let mut slides: Vec<fragments::Fragment> = vec![];
-  let mut done = false;
-
-  //TODO: skip slides * index
-  parse(fragments::ElementType::Slide, &mut parser)
 }
 
 fn to_presentation_tag(tag: Tag) -> fragments::ElementType {
@@ -75,6 +101,12 @@ fn to_presentation_tag(tag: Tag) -> fragments::ElementType {
   }
 }
 
+fn slide_end(tag: &Tag) -> bool {
+  match *tag {
+    Tag::Rule => { true },
+    _ => { false }
+  }
+}
 
 #[cfg(test)]
 mod test {
@@ -85,10 +117,23 @@ mod test {
   fn parses_list() {
     let slide = parse_slide(&"* item 1\n* item 2\n".to_string(), 0).unwrap();
 
+    println!(">> {:?}", slide);
     let listItems = slide.children.unwrap()[0].clone().children.unwrap();
 
     assert_eq!(listItems.len(), 2);
     assert_eq!(listItems[0].content, "item 1");
     assert_eq!(listItems[1].content, "item 2");
+  }
+
+  #[test]
+  fn parses_second_slide() {
+    let slide = parse_slide(&"text\n\n---\nsecond slide content".to_string(), 1).unwrap();
+    assert_eq!(slide.children.unwrap()[0].clone().children.unwrap()[0].content, "second slide content");
+  }
+
+  #[test]
+  fn parses_last() {
+    let slide = parse_slide(&"text\n\n---\nsecond slide content".to_string(), 4).unwrap();
+    assert_eq!(slide.children.unwrap()[0].clone().children.unwrap()[0].content, "second slide content");
   }
 }

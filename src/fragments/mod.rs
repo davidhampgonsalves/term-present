@@ -33,8 +33,8 @@ impl fmt::Debug for Fragment {
   }
 }
 
-pub fn is_block_element(fragment:&Fragment) -> bool {
-  match fragment.element_type {
+pub fn is_block_element(element_type: &ElementType) -> bool {
+  match *element_type {
     ElementType::List => true,
     ElementType::CodeBlock => true,
     ElementType::Paragraph => true,
@@ -59,7 +59,7 @@ pub fn generate_block(fragment:&Fragment, indent:u16, max_width:u16) -> String {
   fragment.children.as_ref().unwrap_or(&vec![]).iter().enumerate().map(|(i, item)| {
     let content = generate(item, indent, max_width);
 
-    if is_block_element(item) {
+    if is_block_element(&item.element_type) {
       return content
     }
     return format!("{indent}-{content}\n", indent=utils::spaces(indent), content=content)
